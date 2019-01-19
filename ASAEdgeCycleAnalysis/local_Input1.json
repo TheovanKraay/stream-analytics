@@ -2,7 +2,7 @@
   "InputAlias": "Input1",
   "Type": "Data Stream",
   "Format": "Json",
-  "FilePath": "..\\..\\EdgeHubInputAll.json",
+  "FilePath": "..\\sample.json",
   "SerializationDllPath": null,
   "SerializationClassName": null,
   "SerializationDllPathInLocal": null,
