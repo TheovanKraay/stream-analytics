@@ -1,0 +1,11 @@
+﻿{
+  "InputAlias": "Input1",
+  "Type": "Data Stream",
+  "Format": "Json",
+  "FilePath": "..\\..\\EdgeHubInputAll.json",
+  "SerializationDllPath": null,
+  "SerializationClassName": null,
+  "SerializationDllPathInLocal": null,
+  "Sample": "{\r\n  \"Seq\": 1,\r\n  \"CycleID\": \"43309.4625828356\",\r\n  \"Step\": 1,\r\n  \"time\": \"2018-09-12T11:06:13.169\"\r\n}",
+  "ScriptType": "InputMock"
+}

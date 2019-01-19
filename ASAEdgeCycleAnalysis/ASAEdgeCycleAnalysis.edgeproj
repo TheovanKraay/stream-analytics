@@ -1,0 +1,41 @@
+﻿<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>e4a12dac-355a-4493-a158-55a460fadfc3</ProjectGuid>
+    <OutputType>File</OutputType>
+    <AssemblyName>ASAEdgeCycleAnalysis</AssemblyName>
+    <StartFile>Script.asaql</StartFile>
+    <ASATargetsFilePath>$(AppData)\Microsoft\DataLake\MsBuild\1.0\StreamAnalytics.targets</ASATargetsFilePath>
+    <Name>ASAEdgeCycleAnalysis</Name>
+    <RootNamespace>ASAEdgeCycleAnalysis</RootNamespace>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Debug\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <DebugSymbols>false</DebugSymbols>
+    <OutputPath>bin\Release\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Configure Include="Input1.json">
+      <SubType>Input</SubType>
+    </Configure>
+    <Configure Include="Output1.json">
+      <SubType>Output</SubType>
+    </Configure>
+    <Configure Include="local_Input1.json">
+      <SubType>InputMock</SubType>
+    </Configure>
+  </ItemGroup>
+  <ItemGroup>
+    <Script Include="ASACyclesAnalysis.asaql" />
+  </ItemGroup>
+  <ItemGroup>
+    <ScriptCode Include="ASACyclesAnalysis.asaql.cs">
+      <DependentUpon>ASACyclesAnalysis.asaql</DependentUpon>
+    </ScriptCode>
+  </ItemGroup>
+  <Import Project="$(ASATargetsFilePath)" />
+</Project>

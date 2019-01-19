@@ -1,0 +1,195 @@
+﻿with 
+
+------------------------------------------------------------------------
+--grouping by step and using MAX to get the last transition of each step
+------------------------------------------------------------------------
+Seq1Filter as
+(
+SELECT Seq,Step, CycleID,
+MAX(CAST(time as datetime)) as time
+FROM Input1 
+GROUP BY Step, Seq,CycleID, SlidingWindow(minute,5)
+) ,
+
+
+-----------------------------------------------------------------------------------------
+Seq1FilterOrdered as
+(
+select CollectTop(10000) OVER (ORDER BY time ASC) as top1  from Seq1Filter
+GROUP BY TumblingWindow(minute, 1)
+),
+
+Seq1FilterOrderedArraysStripped as
+(
+SELECT    
+    arrayElement.ArrayValue.value.time, 
+    arrayElement.ArrayValue.value.step,
+    arrayElement.ArrayValue.value.cycleid,
+    arrayElement.ArrayValue.value.seq
+FROM Seq1FilterOrdered as event  
+CROSS APPLY GetArrayElements(event.top1) AS arrayElement 
+),
+
+Seq1 as
+(
+select * from Seq1FilterOrderedArraysStripped
+),
+
+------------------------------------------------------------------------------
+--this is just changing some field names (verbose, could have been done above)
+------------------------------------------------------------------------------
+Seq1Data as
+(
+SELECT time, Seq, CycleID, Step
+FROM Seq1 
+),
+
+-------------------------------------------------------------------------------------------
+--getting the first step of each cycle (assumed to be step = 1) 
+-------------------------------------------------------------------------------------------
+--Seq1Cycles as
+--(
+--SELECT * FROM Seq1 where Step = 1
+--),
+
+-------------------------------------------------------------------------------------------
+--getting earliest step of each cycle (NOT assumed to be step = 1 as earlier code above!)
+-------------------------------------------------------------------------------------------
+Seq1Cycles as
+(
+    SELECT CycleID, seq,  MIN(CAST(Step as float)) as Step, MIN(CAST(time as datetime)) as time
+    FROM Seq1 
+    --partition by cycleid
+    GROUP BY 
+    CycleID, seq,  SlidingWindow(minute,5)
+),
+
+-------------------------------------------------------------------------------------------
+--get the durations and start/end time of cycles - partition over Sequence ID
+-------------------------------------------------------------------------------------------
+DurationsCycleSeq1 as
+(
+SELECT time, 
+LAG(Seq, 1) OVER (PARTITION BY Seq LIMIT DURATION(hour, 24)) as Seq, 
+LAG(CycleID, 1) OVER (PARTITION BY Seq LIMIT DURATION(hour, 24)) as CycleID,  
+CAST(LAG(time, 1) OVER (PARTITION BY Seq LIMIT DURATION(hour, 24)) as datetime) as CycleStartTime,
+CAST(time as datetime) as CycleEndTime,
+DATEDIFF(second, LAG(CAST(time as datetime), 1) 
+OVER (PARTITION BY [Seq], seq LIMIT DURATION(hour, 1)), CAST(time as datetime)) as CycleDuration
+FROM Seq1Cycles 
+),
+
+-------------------------------------------------------------------------------------------
+--we hardcode 2 seconds as the cycle duration limit
+--you join with the reference data (commented out)
+-------------------------------------------------------------------------------------------
+JoinCycleRefData as
+(
+    SELECT a.time, a.CycleID, a.CycleDuration, a.Seq,  2 as cyclelimit,
+    a.CycleStartTime, a.CycleEndTime
+    FROM DurationsCycleSeq1 a
+    --JOIN REFDATA b
+),
+
+-------------------------------------------------------------------------------------------
+--get the ids of cycles that exceed the thresholds
+-------------------------------------------------------------------------------------------
+OverCycleID as
+(
+select * from JoinCycleRefData where CycleDuration > cyclelimit
+--select * from JoinCycleRefData 
+),
+
+
+-------------------------------------------------------------------------------------------
+-- get the cycles data from the cycle id's that had exceeded thresholds
+-------------------------------------------------------------------------------------------
+OverCycles as
+(
+select 
+a.time, a.Step, a.CycleID, a.Seq,
+b.CycleDuration, 
+b.CycleStartTime, b.CycleEndTime,b.cyclelimit
+ from 
+Seq1Data a  
+Join OverCycleID b
+ON a.cycleid = b.cycleid
+AND DATEDIFF(hour,a,b) BETWEEN 0 AND 15 
+),
+
+
+-----------------------------------------------------------------------------------------
+--cannot remember why I had to do this ordering, but query does not work properly without
+-----------------------------------------------------------------------------------------
+OverCyclesOrdered as
+(
+select CollectTop(10000) OVER (ORDER BY time ASC) as top1  from OverCycles
+GROUP BY TumblingWindow(minute, 1)
+),
+
+OverCyclesOrderedArraysStripped as
+(
+SELECT    
+    arrayElement.ArrayValue.value.time, 
+    arrayElement.ArrayValue.value.cycleid,
+    arrayElement.ArrayValue.value.seq,
+    arrayElement.ArrayValue.value.CycleStartTime, 
+    arrayElement.ArrayValue.value.CycleEndTime, 
+    arrayElement.ArrayValue.value.cyclelimit, 
+    arrayElement.ArrayValue.value.CycleDuration,
+    arrayElement.ArrayValue.value.step
+FROM OverCyclesOrdered as event  
+CROSS APPLY GetArrayElements(event.top1) AS arrayElement 
+),
+
+
+-----------------------------------------------------------------
+-- get the step durations for the cycles that ran over thresholds
+-----------------------------------------------------------------
+DurationsSeq1 as
+(
+SELECT Seq as Seq, CycleStartTime, CycleEndTime,cyclelimit,CycleDuration, 
+LAG(CycleID, 1) OVER (PARTITION BY Seq LIMIT DURATION(hour, 24)) as CycleID, 
+LAG(Step, 1) OVER (PARTITION BY Seq LIMIT DURATION(hour, 24)) as Step,  
+LAG(time, 1) OVER (PARTITION BY Seq LIMIT DURATION(hour, 24))  as StepStartTime,
+time as StepEndTime,
+DATEDIFF(second, LAG(time, 1) 
+OVER (PARTITION BY [seq], seq LIMIT DURATION(hour, 1)), CAST(time as datetime)) as StepDuration
+FROM OverCyclesOrderedArraysStripped
+),
+
+----------------------------------------
+--we hardcode 1 second as the spanlimit (step limit)
+--you could also join with Ref data for step thresholds (commented out)
+----------------------------------------
+JoinRefData as
+(
+    SELECT a.Step, a.Seq, a.CycleID, a.StepDuration, 
+    --a.StepStartTime, a.StepEndTime, b.spanlimit,
+    a.StepStartTime, a.StepEndTime, 1 as spanlimit,
+    a.CycleStartTime, a.CycleEndTime,a.cyclelimit,a.CycleDuration
+    FROM DurationsSeq1 a
+    --JOIN REFDATA b
+    --On a.Step = b.StepID
+    --and a.Seq = b.SeqID
+),
+
+-----------------------------------------------------
+--results (output only steps which exceed thresholds)
+-----------------------------------------------------
+
+results as
+(
+SELECT DISTINCT CycleID, Seq, Step, 
+StepStartTime,StepEndTime, StepDuration,
+--SpanLimit as StepBenchmark,
+(StepDuration - Spanlimit) as OverStepBenchmark,
+CycleStartTime, CycleEndTime, CycleDuration, 
+--cyclelimit as CycleBenchmark,
+(CycleDuration - cyclelimit) as OverCycleBenchmark
+FROM JoinRefData 
+where StepDuration > spanlimit
+)
+select * 
+INTO output
+from results
