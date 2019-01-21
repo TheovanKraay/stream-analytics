@@ -12,7 +12,7 @@ GROUP BY Step, Seq,CycleID, SlidingWindow(minute,5)
 ) ,
 
 
------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------
 Seq1FilterOrdered as
 (
 select CollectTop(10000) OVER (ORDER BY time ASC) as top1  from Seq1Filter
