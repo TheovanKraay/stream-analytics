@@ -1,0 +1,11 @@
+﻿{
+  "InputAlias": "REFDATA",
+  "Type": "Reference data",
+  "Format": "Json",
+  "FilePath": "..\\REFDATA.json",
+  "SerializationDllPath": null,
+  "SerializationClassName": null,
+  "SerializationDllPathInLocal": null,
+  "Sample": "{\r\n  \"SeqID\": 1,\r\n  \"StepID\": 1,\r\n  \"spanlimit\": 1,\r\n  \"cyclelimit\": 2\r\n}",
+  "ScriptType": "InputMock"
+}

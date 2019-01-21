@@ -22,6 +22,9 @@
     <Configure Include="Input1.json">
       <SubType>Input</SubType>
     </Configure>
+    <Configure Include="local_REFDATA.json">
+      <SubType>InputMock</SubType>
+    </Configure>
     <Configure Include="Output1.json">
       <SubType>Output</SubType>
     </Configure>

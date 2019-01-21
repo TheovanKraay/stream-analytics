@@ -1,0 +1,34 @@
+[
+  {
+    "SeqID": 1,
+    "StepID": 1,
+    "spanlimit": 1,
+    "cyclelimit": 2
+  },
+  {
+    "SeqID": 1,
+    "StepID": 2,
+    "spanlimit": 1
+  },
+  {
+    "SeqID": 1,
+    "StepID": 3,
+    "spanlimit": 1
+  },
+  {
+    "SeqID": 2,
+    "StepID": 1,
+    "spanlimit": 1,
+    "cyclelimit": 2
+  },
+  {
+    "SeqID": 2,
+    "StepID": 2,
+    "spanlimit": 1
+  },
+  {
+    "SeqID": 2,
+    "StepID": 3,
+    "spanlimit": 1
+  }
+]
